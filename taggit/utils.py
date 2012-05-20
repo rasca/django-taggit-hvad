@@ -109,7 +109,7 @@ def edit_string_for_tags(tags):
     """
     names = []
     for tag in tags:
-        name = tag.name
+        name = tag.__unicode__()
         if u',' in name or u' ' in name:
             names.append('"%s"' % name)
         else:

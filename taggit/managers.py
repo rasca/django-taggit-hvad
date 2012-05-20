@@ -161,11 +161,15 @@ class _TaggableManager(models.Manager):
         # Remove the "Untranslated" tags
         untranslated_display = force_unicode(
             self.through.tag_model().UNTRANSLATED_DISPLAY)
+        tags = [
+            t
+            for t in tags
+            if t != untranslated_display
+        ]
         str_tags = set([
             t
             for t in tags
-            if (not isinstance(t, self.through.tag_model()) and
-                t != untranslated_display)
+            if not isinstance(t, self.through.tag_model())
         ])
         tag_objs = set(tags) - str_tags
         # If str_tags has 0 elements Django actually optimizes that to not do a
