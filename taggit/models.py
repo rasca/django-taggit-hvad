@@ -1,18 +1,27 @@
 import django
+from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import GenericForeignKey
 from django.db import models, IntegrityError, transaction
 from django.db.models.query import QuerySet
 from django.template.defaultfilters import slugify as default_slugify
+from django.utils.encoding import force_unicode
 from django.utils.translation import ugettext_lazy as _, ugettext
 
+from hvad.models import TranslatableModel, TranslatedFields
 
-class TagBase(models.Model):
-    name = models.CharField(verbose_name=_('Name'), max_length=100)
+
+class TagBase(TranslatableModel):
     slug = models.SlugField(verbose_name=_('Slug'), unique=True, max_length=100)
 
+    UNTRANSLATED_DISPLAY = _('Untranslated Tag')
+
+
     def __unicode__(self):
-        return self.name
+        try:
+            return self.name
+        except ObjectDoesNotExist:
+            return force_unicode(self.UNTRANSLATED_DISPLAY)
 
     class Meta:
         abstract = True
@@ -53,10 +62,14 @@ class TagBase(models.Model):
 
 
 class Tag(TagBase):
+
+    translations = TranslatedFields(
+        name=models.CharField(verbose_name=_('Name'), max_length=100),
+    )
+
     class Meta:
         verbose_name = _("Tag")
         verbose_name_plural = _("Tags")
-
 
 
 class ItemBase(models.Model):

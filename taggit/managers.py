@@ -3,8 +3,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.fields.related import ManyToManyRel, RelatedField, add_lazy_relation
 from django.db.models.related import RelatedObject
+from django.utils.encoding import force_unicode
 from django.utils.text import capfirst
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext_lazy as _, get_language
 
 from taggit.forms import TagField
 from taggit.models import TaggedItem, GenericTaggedItemBase
@@ -157,15 +158,19 @@ class _TaggableManager(models.Manager):
 
     @require_instance_manager
     def add(self, *tags):
+        # Remove the "Untranslated" tags
+        untranslated_display = force_unicode(
+            self.through.tag_model().UNTRANSLATED_DISPLAY)
         str_tags = set([
             t
             for t in tags
-            if not isinstance(t, self.through.tag_model())
+            if (not isinstance(t, self.through.tag_model()) and
+                t != untranslated_display)
         ])
         tag_objs = set(tags) - str_tags
         # If str_tags has 0 elements Django actually optimizes that to not do a
         # query.  Malcolm is very smart.
-        existing = self.through.tag_model().objects.filter(
+        existing = self.through.tag_model().objects.language().filter(
             name__in=str_tags
         )
         tag_objs.update(existing)
@@ -184,11 +189,14 @@ class _TaggableManager(models.Manager):
     @require_instance_manager
     def remove(self, *tags):
         self.through.objects.filter(**self._lookup_kwargs()).filter(
-            tag__name__in=tags).delete()
+            tag__in=self.through.tag_model().objects.language().filter(
+                name__in=tags)).delete()
 
     @require_instance_manager
     def clear(self):
-        self.through.objects.filter(**self._lookup_kwargs()).delete()
+        # We only clear the tags that have translations in the current language
+        self.through.objects.filter(tag__translations__language_code=get_language(),
+                                    **self._lookup_kwargs()).delete()
 
     def most_common(self):
         return self.get_query_set().annotate(

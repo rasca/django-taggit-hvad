@@ -15,6 +15,7 @@ if not settings.configured:
             'django.contrib.contenttypes',
             'taggit',
             'taggit.tests',
+            'hvad',
         ]
     )
 

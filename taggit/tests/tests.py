@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import connection
 from django.test import TestCase, TransactionTestCase
+from django.utils.translation import get_language, activate
 
 from taggit.managers import TaggableManager
 from taggit.models import Tag, TaggedItem
@@ -13,7 +14,7 @@ from taggit.tests.forms import (FoodForm, DirectFoodForm, CustomPKFoodForm,
 from taggit.tests.models import (Food, Pet, HousePet, DirectFood, DirectPet,
     DirectHousePet, TaggedPet, CustomPKFood, CustomPKPet, CustomPKHousePet,
     TaggedCustomPKPet, OfficialFood, OfficialPet, OfficialHousePet,
-    OfficialThroughModel, OfficialTag, Photo, Movie, Article)
+    OfficialThroughModel, OfficialTag, Photo, Movie, )#Article)
 from taggit.utils import parse_tags, edit_string_for_tags
 
 
@@ -78,14 +79,15 @@ class TagModelTestCase(BaseTaggingTransactionTestCase):
         yummy = self.tag_model.objects.create(name="yummy")
         apple.tags.add(yummy)
 
-    def test_slugify(self):
-        a = Article.objects.create(title="django-taggit 1.0 Released")
-        a.tags.add("awesome", "release", "AWESOME")
-        self.assert_tags_equal(a.tags.all(), [
-            "category-awesome",
-            "category-release",
-            "category-awesome-1"
-        ], attr="slug")
+    # No proxies for django-hvad
+    # def test_slugify(self):
+    #     # a = Article.objects.create(title="django-taggit 1.0 Released")
+    #     a.tags.add("awesome", "release", "AWESOME")
+    #     self.assert_tags_equal(a.tags.all(), [
+    #         "category-awesome",
+    #         "category-release",
+    #         "category-awesome-1"
+    #     ], attr="slug")
 
 class TagModelDirectTestCase(TagModelTestCase):
     food_model = DirectFood
@@ -143,10 +145,10 @@ class TaggableManagerTestCase(BaseTaggingTestCase):
     def test_add_queries(self):
         apple = self.food_model.objects.create(name="apple")
         #   1 query to see which tags exist
-        # + 3 queries to create the tags.
+        # + 3x2 queries to create the tags.
         # + 6 queries to create the intermediary things (including SELECTs, to
         #     make sure we don't double create.
-        self.assert_num_queries(10, apple.tags.add, "red", "delicious", "green")
+        self.assert_num_queries(13, apple.tags.add, "red", "delicious", "green")
 
         pear = self.food_model.objects.create(name="pear")
         #   1 query to see which tags exist
@@ -187,11 +189,15 @@ class TaggableManagerTestCase(BaseTaggingTestCase):
         pear.tags.add("green")
 
         self.assertEqual(
-            list(self.food_model.objects.filter(tags__name__in=["red"])),
+            list(self.food_model.objects.filter(
+                tags__in=self.food_model.tags.through.tag_model(
+                ).objects.language().filter(name__in=["red"]))),
             [apple]
         )
         self.assertEqual(
-            list(self.food_model.objects.filter(tags__name__in=["green"])),
+            list(self.food_model.objects.filter(
+                tags__in=self.food_model.tags.through.tag_model(
+                ).objects.language().filter(name__in=["green"]))),
             [apple, pear]
         )
 
@@ -200,18 +206,22 @@ class TaggableManagerTestCase(BaseTaggingTestCase):
         dog = self.pet_model.objects.create(name="dog")
         dog.tags.add("woof", "red")
         self.assertEqual(
-            list(self.food_model.objects.filter(tags__name__in=["red"]).distinct()),
+            list(self.food_model.objects.filter(
+                tags__in=self.food_model.tags.through.tag_model(
+                ).objects.language().filter(name__in=["red"])).distinct()),
             [apple]
         )
 
-        tag = self.tag_model.objects.get(name="woof")
+        tag = self.tag_model.objects.language().get(name="woof")
         self.assertEqual(list(self.pet_model.objects.filter(tags__in=[tag])), [dog])
 
         cat = self.housepet_model.objects.create(name="cat", trained=True)
         cat.tags.add("fuzzy")
 
         self.assertEqual(
-            set(map(lambda o: o.pk, self.pet_model.objects.filter(tags__name__in=["fuzzy"]))),
+            set(map(lambda o: o.pk, self.pet_model.objects.filter(
+                tags__in=self.food_model.tags.through.tag_model(
+                ).objects.language().filter(name__in=["fuzzy"])))),
             set([kitty.pk, cat.pk])
         )
 
@@ -246,7 +256,9 @@ class TaggableManagerTestCase(BaseTaggingTestCase):
         guava = self.food_model.objects.create(name="guava")
 
         self.assertEqual(
-            map(lambda o: o.pk, self.food_model.objects.exclude(tags__name__in=["red"])),
+            map(lambda o: o.pk, self.food_model.objects.exclude(
+                tags__in=self.food_model.tags.through.tag_model(
+                ).objects.language().filter(name__in=["red"]))),
             [pear.pk, guava.pk],
         )
 

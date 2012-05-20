@@ -1,8 +1,10 @@
 from django.db import models
+from django.utils.translation import ugettext_lazy as _
 
 from taggit.managers import TaggableManager
 from taggit.models import (TaggedItemBase, GenericTaggedItemBase, TaggedItem,
     TagBase, Tag)
+from hvad.models import TranslatedFields
 
 
 class Food(models.Model):
@@ -80,6 +82,10 @@ class CustomPKHousePet(CustomPKPet):
 # Test custom through model to a custom tag model
 
 class OfficialTag(TagBase):
+
+    translations = TranslatedFields(
+        name=models.CharField(verbose_name=_('Name'), max_length=100),
+    )
     official = models.BooleanField()
 
 class OfficialThroughModel(GenericTaggedItemBase):
@@ -118,26 +124,27 @@ class Movie(Media):
     pass
 
 
-class ArticleTag(Tag):
-    class Meta:
-        proxy = True
-
-    def slugify(self, tag, i=None):
-        slug = "category-%s" % tag.lower()
-
-        if i is not None:
-            slug += "-%d" % i
-        return slug
-
-class ArticleTaggedItem(TaggedItem):
-    class Meta:
-        proxy = True
-
-    @classmethod
-    def tag_model(self):
-        return ArticleTag
-
-class Article(models.Model):
-    title = models.CharField(max_length=100)
-
-    tags = TaggableManager(through=ArticleTaggedItem)
+# django-hvad doesn't support proxies yet
+# class ArticleTag(Tag):
+#     class Meta:
+#         proxy = True
+# 
+#     def slugify(self, tag, i=None):
+#         slug = "category-%s" % tag.lower()
+# 
+#         if i is not None:
+#             slug += "-%d" % i
+#         return slug
+# 
+# class ArticleTaggedItem(TaggedItem):
+#     class Meta:
+#         proxy = True
+# 
+#     @classmethod
+#     def tag_model(self):
+#         return ArticleTag
+# 
+# class Article(models.Model):
+#     title = models.CharField(max_length=100)
+# 
+#     tags = TaggableManager(through=ArticleTaggedItem)
