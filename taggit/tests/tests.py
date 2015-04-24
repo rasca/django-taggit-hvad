@@ -205,10 +205,12 @@ class TaggableManagerTestCase(BaseTaggingTestCase):
         kitty.tags.add("fuzzy", "red")
         dog = self.pet_model.objects.create(name="dog")
         dog.tags.add("woof", "red")
+        # must coerce to list du to https://github.com/KristianOellegaard/django-hvad/issues/241
+        tag_list = list(self.food_model.tags.through.tag_model(
+                ).objects.language().filter(name__in=["red"]))
         self.assertEqual(
             list(self.food_model.objects.filter(
-                tags__in=self.food_model.tags.through.tag_model(
-                ).objects.language().filter(name__in=["red"])).distinct()),
+                tags__in=tag_list).distinct()),
             [apple]
         )
 

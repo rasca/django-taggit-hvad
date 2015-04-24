@@ -20,7 +20,7 @@ except NameError:
         from django.utils.itercompat import all
     except ImportError:
         # 1.1.X compat
-        def all(iterable):
+        def all(iterable):  # NOQA
             for item in iterable:
                 if not item:
                     return False
@@ -110,7 +110,7 @@ class TaggableManager(RelatedField):
 
     def m2m_reverse_name(self):
         return self.through._meta.get_field_by_name("tag")[0].column
-    
+
     def m2m_reverse_field_name(self):
         return self.through._meta.get_field_by_name("tag")[0].name
 
@@ -134,7 +134,7 @@ class TaggableManager(RelatedField):
     def extra_filters(self, pieces, pos, negate):
         if negate or not self.use_gfk:
             return []
-        prefix = "__".join(["tagged_items"] + pieces[:pos-2])
+        prefix = "__".join(["tagged_items"] + pieces[:pos - 2])
         cts = map(ContentType.objects.get_for_model, _get_subclasses(self.model))
         if len(cts) == 1:
             return [("%s__content_type" % prefix, cts[0])]
@@ -192,9 +192,9 @@ class _TaggableManager(models.Manager):
 
     @require_instance_manager
     def remove(self, *tags):
-        self.through.objects.filter(**self._lookup_kwargs()).filter(
-            tag__in=self.through.tag_model().objects.language().filter(
-                name__in=tags)).delete()
+        # must coerce to list du to https://github.com/KristianOellegaard/django-hvad/issues/241
+        tag_list = list(self.through.tag_model().objects.language().filter(name__in=tags).values_list('id', flat=True))
+        self.through.objects.filter(**self._lookup_kwargs()).filter(tag__in=tag_list).delete()
 
     @require_instance_manager
     def clear(self):
