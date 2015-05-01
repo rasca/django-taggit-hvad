@@ -5,9 +5,9 @@ from django.utils.translation import ugettext_lazy as _
 from django.utils.encoding import python_2_unicode_compatible
 
 from taggit.managers import TaggableManager
-from taggit.models import (TaggedItemBase, GenericTaggedItemBase, TaggedItem,
-    TagBase, Tag)
 from hvad.models import TranslatedFields
+from taggit.models import (GenericTaggedItemBase, Tag, TagBase, TaggedItem,
+                           TaggedItemBase)
 
 
 # Ensure that two TaggableManagers with custom through model are allowed.
@@ -22,6 +22,14 @@ class Through2(TaggedItemBase):
 class MultipleTags(models.Model):
     tags1 = TaggableManager(through=Through1, related_name='tags1')
     tags2 = TaggableManager(through=Through2, related_name='tags2')
+
+# Ensure that two TaggableManagers with GFK via different through models are allowed.
+class ThroughGFK(GenericTaggedItemBase):
+    tag = models.ForeignKey(Tag, related_name='tagged_items')
+
+class MultipleTagsGFK(models.Model):
+    tags1 = TaggableManager(related_name='tagsgfk1')
+    tags2 = TaggableManager(through=ThroughGFK, related_name='tagsgfk2')
 
 
 @python_2_unicode_compatible
@@ -44,7 +52,7 @@ class Pet(models.Model):
 
 
 class HousePet(Pet):
-    trained = models.BooleanField()
+    trained = models.BooleanField(default=False)
 
 
 # Test direct-tagging with custom through model
@@ -78,7 +86,7 @@ class DirectPet(models.Model):
 
 
 class DirectHousePet(DirectPet):
-    trained = models.BooleanField()
+    trained = models.BooleanField(default=False)
 
 
 # Test custom through model to model with custom PK
@@ -108,7 +116,7 @@ class CustomPKPet(models.Model):
         return self.name
 
 class CustomPKHousePet(CustomPKPet):
-    trained = models.BooleanField()
+    trained = models.BooleanField(default=False)
 
 # Test custom through model to a custom tag model
 
@@ -140,7 +148,7 @@ class OfficialPet(models.Model):
         return self.name
 
 class OfficialHousePet(OfficialPet):
-    trained = models.BooleanField()
+    trained = models.BooleanField(default=False)
 
 
 class Media(models.Model):
@@ -181,3 +189,19 @@ class Article(models.Model):
     title = models.CharField(max_length=100)
 
     tags = TaggableManager(through=ArticleTaggedItem)
+
+
+class CustomManager(models.Model):
+    class Foo(object):
+        def __init__(*args, **kwargs):
+            pass
+
+    tags = TaggableManager(manager=Foo)
+
+
+class Parent(models.Model):
+    tags = TaggableManager()
+
+
+class Child(Parent):
+    pass

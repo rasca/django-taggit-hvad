@@ -18,7 +18,8 @@ if not settings.configured:
             'taggit',
             'tests',
             'hvad',
-        ]
+        ],
+        MIDDLEWARE_CLASSES=[],
     )
 
 
@@ -29,4 +30,3 @@ def runtests():
 
 if __name__ == '__main__':
     runtests()
-
