@@ -11,7 +11,6 @@ class Migration(SchemaMigration):
         # Adding model 'Tag'
         db.create_table('taggit_tag', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('name', self.gf('django.db.models.fields.CharField')(max_length=100)),
             ('slug', self.gf('django.db.models.fields.SlugField')(unique=True, max_length=100)),
         ))
         db.send_create_signal('taggit', ['Tag'])
@@ -24,6 +23,18 @@ class Migration(SchemaMigration):
             ('content_type', self.gf('django.db.models.fields.related.ForeignKey')(related_name='taggit_taggeditem_tagged_items', to=orm['contenttypes.ContentType'])),
         ))
         db.send_create_signal('taggit', ['TaggedItem'])
+
+        # Adding model 'TagTranslation'
+        db.create_table(u'taggit_tag_translation', (
+            (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('name', self.gf('django.db.models.fields.CharField')(max_length=100)),
+            ('language_code', self.gf('django.db.models.fields.CharField')(max_length=15, db_index=True)),
+            ('master', self.gf('django.db.models.fields.related.ForeignKey')(related_name='translations', null=True, to=orm['taggit.Tag'])),
+        ))
+        db.send_create_signal(u'taggit', ['TagTranslation'])
+
+        # Adding unique constraint on 'TagTranslation', fields ['language_code', 'master']
+        db.create_unique(u'taggit_tag_translation', ['language_code', 'master_id'])
 
 
     def backwards(self, orm):
@@ -45,7 +56,6 @@ class Migration(SchemaMigration):
         'taggit.tag': {
             'Meta': {'object_name': 'Tag'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'slug': ('django.db.models.fields.SlugField', [], {'unique': 'True', 'max_length': '100'})
         },
         'taggit.taggeditem': {
@@ -54,6 +64,13 @@ class Migration(SchemaMigration):
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'object_id': ('django.db.models.fields.IntegerField', [], {'db_index': 'True'}),
             'tag': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'taggit_taggeditem_items'", 'to': "orm['taggit.Tag']"})
+        },
+        u'taggit.tagtranslation': {
+            'Meta': {'unique_together': "[('language_code', 'master')]", 'object_name': 'TagTranslation', 'db_table': "u'taggit_tag_translation'", 'index_together': '()'},
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'language_code': ('django.db.models.fields.CharField', [], {'max_length': '15', 'db_index': 'True'}),
+            'master': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'translations'", 'null': 'True', 'to': u"orm['taggit.Tag']"}),
+            'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         }
     }
 
