@@ -1,6 +1,7 @@
 from django.contrib.contenttypes.generic import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models.fields import FieldDoesNotExist
 from django.db.models.fields.related import ManyToManyRel, RelatedField, add_lazy_relation
 from django.db.models.related import RelatedObject
 from django.utils.encoding import force_unicode
@@ -53,6 +54,9 @@ class TaggableManager(RelatedField):
         self.null = True
         self.creation_counter = models.Field.creation_counter
         models.Field.creation_counter += 1
+
+    def get_attname(self):
+        raise FieldDoesNotExist
 
     def __get__(self, instance, model):
         if instance is not None and instance.pk is None:
