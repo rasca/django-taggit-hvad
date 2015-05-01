@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import django
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import GenericForeignKey

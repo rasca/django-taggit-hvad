@@ -5,6 +5,7 @@ from unittest import TestCase as UnitTestCase
 import django
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core import serializers
 from django.db import connection
 from django.test import TestCase, TransactionTestCase
 from django.utils.translation import get_language, activate
@@ -379,6 +380,24 @@ class TaggableManagerTestCase(BaseTaggingTestCase):
         apple.tags.add('green and juicy')
         apple.tags.add('red')
         self.assertEqual(list(apple.tags.slugs()), ['green-and-juicy', 'red'])
+
+    def test_serializes(self):
+        apple = self.food_model.objects.create(name="apple")
+        serializers.serialize("json", (apple,))
+
+    def test_prefetch_related(self):
+        apple = self.food_model.objects.create(name="apple")
+        apple.tags.add('1', '2')
+        orange = self.food_model.objects.create(name="orange")
+        orange.tags.add('2', '4')
+        with self.assertNumQueries(2):
+            l = list(self.food_model.objects.prefetch_related('tags').all())
+        with self.assertNumQueries(0):
+            foods = dict((f.name, set(t.name for t in f.tags.all())) for f in l)
+            self.assertEqual(foods, {
+                'orange': set(['2', '4']),
+                'apple': set(['1', '2'])
+            })
 
 
 class TaggableManagerDirectTestCase(TaggableManagerTestCase):
