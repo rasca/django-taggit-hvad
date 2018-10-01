@@ -6,20 +6,22 @@ import django
 from django.contrib.contenttypes.models import ContentType
 from django.core import serializers
 from django.core.exceptions import ImproperlyConfigured, ValidationError
-from django.db import connection
+from django.core.management import call_command
+from django.db import connection, models
 from django.test import TestCase, TransactionTestCase
-from django.utils import six
+from django.test.utils import override_settings
 from django.utils.encoding import force_text
 from django.utils.translation import get_language, activate
 
-from .forms import CustomPKFoodForm, DirectFoodForm, FoodForm, OfficialFoodForm
+from .forms import (CustomPKFoodForm, DirectCustomPKFoodForm, DirectFoodForm,
+                    FoodForm, OfficialFoodForm)
 from .models import (Article, Child, CustomManager, CustomPKFood,
-                     CustomPKHousePet, CustomPKPet, DirectFood,
+                     CustomPKHousePet, CustomPKPet, DirectCustomPKFood,
+                     DirectCustomPKHousePet, DirectCustomPKPet, DirectFood,
                      DirectHousePet, DirectPet, Food, HousePet, Movie,
                      OfficialFood, OfficialHousePet, OfficialPet,
                      OfficialTag, OfficialThroughModel, Pet, Photo,
-                     TaggedCustomPKFood, TaggedCustomPKPet, TaggedFood,
-                     TaggedPet)
+                     TaggedCustomPK, TaggedCustomPKFood, TaggedFood)
 
 from taggit.managers import _model_name, _TaggableManager, TaggableManager
 from taggit.models import Tag, TaggedItem
@@ -101,6 +103,10 @@ class TagModelTestCase(BaseTaggingTransactionTestCase):
 
 class TagModelDirectTestCase(TagModelTestCase):
     food_model = DirectFood
+    tag_model = Tag
+
+class TagModelDirectCustomPKTestCase(TagModelTestCase):
+    food_model = DirectCustomPKFood
     tag_model = Tag
 
 class TagModelCustomPKTestCase(TagModelTestCase):
@@ -420,9 +426,16 @@ class TaggableManagerTestCase(BaseTaggingTestCase):
         apple = self.food_model.objects.create(name="apple")
         apple.tags.add('1', '2')
         with self.assertNumQueries(2):
-            l = list(self.food_model.objects.prefetch_related('tags').all())
+            list(self.food_model.objects.prefetch_related('tags').all())
             join_clause = 'INNER JOIN "%s"' % self.taggeditem_model._meta.db_table
             self.assertEqual(connection.queries[-1]['sql'].count(join_clause), 1, connection.queries[-2:])
+
+    @override_settings(TAGGIT_CASE_INSENSITIVE=True)
+    def test_with_case_insensitive_option(self):
+        spain = self.tag_model.objects.create(name="Spain", slug="spain")
+        orange = self.food_model.objects.create(name="orange")
+        orange.tags.add('spain')
+        self.assertEqual(list(orange.tags.all()), [spain])
 
 
 class TaggableManagerDirectTestCase(TaggableManagerTestCase):
@@ -431,11 +444,22 @@ class TaggableManagerDirectTestCase(TaggableManagerTestCase):
     housepet_model = DirectHousePet
     taggeditem_model = TaggedFood
 
+class TaggableManagerDirectCustomPKTestCase(TaggableManagerTestCase):
+    food_model = DirectCustomPKFood
+    pet_model = DirectCustomPKPet
+    housepet_model = DirectCustomPKHousePet
+    taggeditem_model = TaggedCustomPKFood
+
+    def test_require_pk(self):
+        # TODO with a charfield pk, pk is never None, so taggit has no way to
+        # tell if the instance is saved or not
+        pass
+
 class TaggableManagerCustomPKTestCase(TaggableManagerTestCase):
     food_model = CustomPKFood
     pet_model = CustomPKPet
     housepet_model = CustomPKHousePet
-    taggeditem_model = TaggedCustomPKFood
+    taggeditem_model = TaggedCustomPK
 
     def test_require_pk(self):
         # TODO with a charfield pk, pk is never None, so taggit has no way to
@@ -459,6 +483,15 @@ class TaggableManagerOfficialTestCase(TaggableManagerTestCase):
         pear.tags.add("delicious")
 
         self.assertEqual(apple, self.food_model.objects.get(tags__official=False))
+
+    def test_get_tags_with_count(self):
+        apple = self.food_model.objects.create(name="apple")
+        apple.tags.add("red", "green", "delicious")
+        pear = self.food_model.objects.create(name="pear")
+        pear.tags.add("green", "delicious")
+
+        tag_info = self.tag_model.objects.filter(officialfood__in=[apple.id, pear.id], name='green').annotate(models.Count('name'))
+        self.assertEqual(tag_info[0].name__count, 2)
 
 class TaggableManagerInitializationTestCase(TaggableManagerTestCase):
     """Make sure manager override defaults and sets correctly."""
@@ -524,6 +557,10 @@ class TaggableFormTestCase(BaseTaggingTestCase):
 class TaggableFormDirectTestCase(TaggableFormTestCase):
     form_class = DirectFoodForm
     food_model = DirectFood
+
+class TaggableFormDirectCustomPKTestCase(TaggableFormTestCase):
+    form_class = DirectCustomPKFoodForm
+    food_model = DirectCustomPKFood
 
 class TaggableFormCustomPKTestCase(TaggableFormTestCase):
     form_class = CustomPKFoodForm
@@ -654,3 +691,12 @@ class InheritedPrefetchTests(TestCase):
         self.assertEquals(4, prefetch_tags.count())
         self.assertEquals(set([t.name for t in no_prefetch_tags]),
                           set([t.name for t in prefetch_tags]))
+
+
+class DjangoCheckTests(UnitTestCase):
+
+    def test_django_checks(self):
+        if django.VERSION >= (1, 6):
+            call_command('check', tag=['models'])
+        else:
+                    call_command('validate')
