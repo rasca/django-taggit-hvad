@@ -1,19 +1,28 @@
 from __future__ import unicode_literals
 
 from django import VERSION
+from django.conf import settings
 from django.utils import six
 from django.utils.encoding import force_text
 from django.utils.functional import wraps
+from django.utils.module_loading import import_string
 
 
-def _get_field(model, name):
-    if VERSION < (1, 8):
-        return model._meta.get_field_by_name(name)[0]
+def _remote_field(field):
+    if VERSION < (1, 9):
+        return field.rel
     else:
-        return model._meta.get_field(name)
+        return field.remote_field
 
 
-def parse_tags(tagstring):
+def _related_model(remote_field):
+    if VERSION >= (1, 9):
+        return remote_field.model
+    else:
+        return remote_field.to
+
+
+def _parse_tags(tagstring):
     """
     Parses tag input, with multiple word input being activated and
     delineated by commas and double quotes. Quotes take precedence, so
@@ -102,7 +111,7 @@ def split_strip(string, delimiter=','):
     return [w for w in words if w]
 
 
-def edit_string_for_tags(tags):
+def _edit_string_for_tags(tags):
     """
     Given list of ``Tag`` instances, creates a string representation of
     the list suitable for editing by the user, such that submitting the
@@ -135,3 +144,19 @@ def require_instance_manager(func):
             raise TypeError("Can't call %s with a non-instance manager" % func.__name__)
         return func(self, *args, **kwargs)
     return inner
+
+
+def get_func(key, default):
+    func_path = getattr(settings, key, default)
+    return import_string(func_path)
+
+
+def parse_tags(tagstring):
+    func = get_func('TAGGIT_TAGS_FROM_STRING', 'taggit.utils._parse_tags')
+    return func(tagstring)
+
+
+def edit_string_for_tags(tags):
+    func = get_func('TAGGIT_STRING_FROM_TAGS',
+                    'taggit.utils._edit_string_for_tags')
+    return func(tags)

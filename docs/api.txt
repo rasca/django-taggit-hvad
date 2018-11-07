@@ -30,10 +30,11 @@ playing around with the API.
 
         Removes all tags from an object.
 
-    .. method:: set(*tags)
+    .. method:: set(*tags, clear=False)
 
-        Removes all the current tags and then adds the specified tags to the
-        object.
+        If ``clear = True`` removes all the current tags and then adds the
+        specified tags to the object. Otherwise sets the object's tags to those
+        specified, removing only the missing tags and adding only the new tags.
 
     .. method: most_common()
 
@@ -41,6 +42,8 @@ playing around with the API.
         they appear, available as the ``num_times`` attribute on each tag. The
         ``QuerySet``is ordered by ``num_times``, descending.  The ``QuerySet``
         is lazily evaluated, and can be sliced efficiently.
+
+        :param min_count: Specify a min count to limit the returned queryset
 
     .. method:: similar_objects()
 
@@ -103,12 +106,3 @@ make use of the ``distinct()`` method on ``QuerySets``::
 
 You can also filter by the slug on tags.  If you're using a custom ``Tag``
 model you can use this API to filter on any fields it has.
-
-Aggregation
-~~~~~~~~~~~
-
-Unfortunately, due to a
-`bug in Django <http://code.djangoproject.com/ticket/10870>`_, it is not
-currently (Django < 1.6) possible to use aggregation in conjunction with ``taggit``.  This is
-a `documented interaction <http://docs.djangoproject.com/en/dev/ref/contrib/contenttypes/#generic-relations-and-aggregation>`_
-of generic relations (which ``taggit`` uses internally) and aggregates.

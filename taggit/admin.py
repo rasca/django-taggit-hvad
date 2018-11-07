@@ -14,9 +14,10 @@ class TagAdmin(TranslatableAdmin):
     inlines = [
         TaggedItemInline
     ]
-    list_display = ["slug", "all_translations"]
-    ordering = ["slug"]
+    list_display = ["name", "slug", "all_translations"]
+    ordering = ["name", "slug"]
     search_fields = ["name"]
+    prepopulated_fields = {"slug": ["name"]}
 
 
 admin.site.register(Tag, TagAdmin)

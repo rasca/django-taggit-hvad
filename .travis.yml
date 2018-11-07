@@ -1,29 +1,62 @@
 language: python
+cache: pip
 sudo: false
-env:
-  - TOXENV=py26-1.4.x
-  - TOXENV=py26-1.5.x
-  - TOXENV=py26-1.6.x
-  - TOXENV=py27-1.4.x
-  - TOXENV=py27-1.5.x
-  - TOXENV=py27-1.6.x
-  - TOXENV=py27-1.7.x
-  - TOXENV=py27-1.8.x
-  - TOXENV=py27-1.9.x
-  - TOXENV=py33-1.5.x
-  - TOXENV=py33-1.6.x
-  - TOXENV=py33-1.7.x
-  - TOXENV=py33-1.8.x
-  - TOXENV=py34-1.5.x
-  - TOXENV=py34-1.6.x
-  - TOXENV=py34-1.7.x
-  - TOXENV=py34-1.8.x
-  - TOXENV=py34-1.9.x
+matrix:
+  fast_finish: true
+  include:
+    - python: 2.7
+      env: TOXENV=py27-1.8.x
+    - python: 3.4
+      env: TOXENV=py34-1.8.x
+    - python: 3.5
+      env: TOXENV=py35-1.8.x
+    - python: 2.7
+      env: TOXENV=py27-1.9.x
+    - python: 3.4
+      env: TOXENV=py34-1.9.x
+    - python: 3.5
+      env: TOXENV=py35-1.9.x
+    - python: 2.7
+      env: TOXENV=py27-1.10.x
+    - python: 3.4
+      env: TOXENV=py34-1.10.x
+    - python: 3.5
+      env: TOXENV=py35-1.10.x
+    - python: 2.7
+      env: TOXENV=py27-1.11.x
+    - python: 3.4
+      env: TOXENV=py34-1.11.x
+    - python: 3.5
+      env: TOXENV=py35-1.11.x
+    - python: 3.6
+      env: TOXENV=py36-1.11.x
+    - python: 3.4
+      env: TOXENV=py34-2.0.x
+    - python: 3.5
+      env: TOXENV=py35-2.0.x
+    - python: 3.6
+      env: TOXENV=py36-2.0.x
+    - python: 3.5
+      env: TOXENV=py35-master
+    - python: 3.6
+      env: TOXENV=py36-master
+  allow_failures:
+    - env: TOXENV=py35-master
+    - env: TOXENV=py36-master
+
 install:
-  - pip install flake8 tox
+  - pip install flake8 tox isort
+
 before_script:
   - flake8 taggit
+  - python setup.py isort
+
 script:
-  - tox
+  - tox -e $TOXENV
+
+after_success:
+  - pip install codecov
+  - codecov -e TOXENV CI TRAVIS_BUILD_ID TRAVIS TRAVIS_BRANCH TRAVIS_JOB_NUMBER TRAVIS_PULL_REQUEST TRAVIS_JOB_ID TRAVIS_REPO_SLUG TRAVIS_COMMIT
+
 notifications:
   email: false
